@@ -417,31 +417,58 @@ function DoesSABHandleCategoryForSite( nzburl )
 
 function SetupCategoryHeader( request, data, nzburl )
 {
-	// Only use auto-categorization if "Use X-DNZB-Category" is false (0), or if the index site doesn't support the X-DNZB-Category HTTP header
+	// Only use auto-categorization if "Use X-DNZB-Category" is false (0), or
+	// if the index site doesn't support the X-DNZB-Category HTTP header
 	var useCatHeader = store.get('config_use_category_header');
 	console.log( 'config_use_category_header = ' + useCatHeader );
 
-    var useUserCats = store.get('config_use_user_categories');
-	
+	var useUserCats = store.get('config_use_user_categories');
 	if( !useCatHeader || !DoesSiteSupportCatHeader( nzburl ) ) {
-        if (!useUserCats) {
-            var hardcodedCategory = store.get( 'config_hard_coded_category' );
-            var defaultCategory = store.get( 'config_default_category' );
-            
-            if( hardcodedCategory ) {
-                data.cat = hardcodedCategory;
-            } else if( request.category ) {
-                data.cat = request.category;
-            } else if( defaultCategory && !DoesSABHandleCategoryForSite( nzburl )) {
-                data.cat = defaultCategory;
-            }
-        }
-        else
-        {
-            data.cat = store.get('active_category');
-        }
+		if (!useUserCats) {
+			var hardcodedCategory = store.get( 'config_hard_coded_category' );
+			var defaultCategory = store.get( 'config_default_category' );
+
+			if( hardcodedCategory ) {
+				data.cat = hardcodedCategory;
+			} else if( request.category ) {
+				data.cat = request.category;
+			} else if( defaultCategory && !DoesSABHandleCategoryForSite( nzburl )) {
+				data.cat = defaultCategory;
+			}
+		} else {
+			data.cat = store.get('active_category');
+		}
 	}
 }
+
+function addToSABnzbdFile( request, sendResponse ) {
+	var fd = new FormData()
+	fd.append('mode', 'addfile');
+	fd.append('output', 'json');
+	fd.append('nzbname', request.blobname);
+        // Requires an object in the form Blob(blobInput, {type: 'application/x-nzb'})
+	// We don't care how it's done, however we expect the Blob to be ready when we get here
+	fd.append('nzbfile', request.blobfile, request.blobname);
+	var sabApiUrl = constructApiUrl();
+	var tdata = constructApiPost();
+	if (!store.get('config_ignore_categories')) {
+		SetupCategoryHeader( request, tdata, nzburl );
+		fd.append('cat', tdata.cat);
+	}
+	// ForData is populated. Time for some action
+	var xhr = new XMLHttpRequest();
+	xhr.open('POST', sabApiUrl, true);
+	xhr.setRequestHeader("enctype", "multipart/form-data");
+	xhr.onload = function(){
+		if (xhr.status == '200') {
+			sendResponse( {ret: 'success', data: tdata } );
+		}
+	};
+	xhr.onerror = function(){ sendResponse( {ret: 'error'} ); };
+	xhr.send(fd);
+	fetchInfo(true);
+}
+
 
 function addToSABnzbd( request, sendResponse ) {
 	var nzburl = request.nzburl;
@@ -518,6 +545,9 @@ function OnRequest( request, sender, sendResponse )
 	case 'addToSABnzbd':
 		addToSABnzbd( request, sendResponse );
 		return true; // return true to be able to receive a response after this function returns.
+	case 'addToSABnzbdFile':
+		addToSABnzbdFile( request, sendResponse );
+		return true;
 	case 'get_categories':
 		var params = {
 		action: 'sendSabRequest',
