@@ -64,6 +64,22 @@
         }
 
         if ($('a.addSABnzbd').length == 0) {
+            // Cover view: For use in te Bootstrap theme
+            $('div.movcover').parent().parent().each(function() {
+                var $dr = $(this);
+                $("a.downloadnzb", $dr).each(function() {
+                    var href = $(this).attr("href");
+                    var insertLoc = $($(this).parent().parent().parent().parent().parent().children()[1]).children()[0]
+                    $(insertLoc).before('<div class="icon"><a class="addSABnzbd" href="' + href + '">' + oneClickImgTag + '</a></div>')
+                });
+                $dr.find('a.addSABnzbd').on('click', function() {
+                    addOne($(this).closest('div'));
+                    return false;
+                });
+            });
+        }
+
+        if ($('a.addSABnzbd').length == 0) {
             // List view: Loop through all the td.check items and add a one-click link next the nearby title
             $('td.check').each(function() {
                 var $tr = $(this).parent();
@@ -71,6 +87,19 @@
                 $tr.find('a.title').parent().prepend('<a class="addSABnzbd" href="' + href + '">' + oneClickImgTag + '</a>');
                 $tr.find('a.addSABnzbd').on('click', function() {
                     addOne($(this).closest('tr'));
+                    return false;
+                });
+            });
+        }
+
+        if ($('a.addSABnzbd').length == 0) {
+            // List view: For use in te Bootstrap theme
+            $('div.data-row').each(function() {
+                var $dr = $(this);
+                var href = $dr.find('a.downloadnzb').attr('href')
+                $dr.find('a.title').parent().prepend('<a class="addSABnzbd" href="' + href + '">' + oneClickImgTag + '</a>');
+                $dr.find('a.addSABnzbd').on('click', function() {
+                    addOne($dr);
                     return false;
                 });
             });
